@@ -390,6 +390,110 @@
     </property>
    </widget>
   </widget>
+  <widget class="QGroupBox" name="groupBox_7">
+   <property name="geometry">
+    <rect>
+     <x>710</x>
+     <y>9</y>
+     <width>191</width>
+     <height>431</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>5. LeNet</string>
+   </property>
+   <widget class="QPushButton" name="pushButton_STI">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>20</y>
+      <width>151</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>1. Show Train Images</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_SH">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>80</y>
+      <width>151</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>2.Show Hyperparameters</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_T1E">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>140</y>
+      <width>151</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>3. Train 1 Epoch</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_STR">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>200</y>
+      <width>151</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>4. Show Training Result</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_INFER">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>330</y>
+      <width>151</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>5. Inference</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_11">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>250</y>
+      <width>121</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Test Image Index:</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="tx_edit_2">
+    <property name="geometry">
+     <rect>
+      <x>60</x>
+      <y>280</y>
+      <width>113</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>(0~9999)</string>
+    </property>
+   </widget>
+  </widget>
  </widget>
  <resources/>
  <connections/>
