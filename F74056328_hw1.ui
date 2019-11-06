@@ -35,7 +35,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Load Image</string>
+     <string>1. Load Image</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton_CC">
@@ -48,7 +48,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Color Conversion</string>
+     <string>2. Color Conversion</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton_IF">
@@ -61,7 +61,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Image Flipping</string>
+     <string>3. Image Flipping</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton_BL">
@@ -74,7 +74,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Blending</string>
+     <string>4. Blending</string>
     </property>
    </widget>
   </widget>
@@ -121,9 +121,9 @@
    <property name="geometry">
     <rect>
      <x>200</x>
-     <y>20</y>
+     <y>10</y>
      <width>291</width>
-     <height>421</height>
+     <height>431</height>
     </rect>
    </property>
    <property name="title">
@@ -307,7 +307,7 @@
       </rect>
      </property>
      <property name="text">
-      <string>Rotate, Scale, Translate</string>
+      <string>3.1 Rotate, Scale, Translate</string>
      </property>
     </widget>
    </widget>
@@ -321,7 +321,72 @@
      </rect>
     </property>
     <property name="text">
-     <string>Perspective Transformation</string>
+     <string>3.2 Perspective Transformation</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QGroupBox" name="groupBox_6">
+   <property name="geometry">
+    <rect>
+     <x>520</x>
+     <y>10</y>
+     <width>161</width>
+     <height>431</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>4. Convolution</string>
+   </property>
+   <widget class="QPushButton" name="pushButton_GA">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>20</y>
+      <width>121</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>1. Gaussian</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_SOX">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>80</y>
+      <width>121</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>2. Sobel X</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_SOY">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>140</y>
+      <width>121</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>3. Sobel Y</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_MAG">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>200</y>
+      <width>121</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>4. Magnitude</string>
     </property>
    </widget>
   </widget>

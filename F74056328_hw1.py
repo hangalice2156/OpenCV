@@ -1,6 +1,7 @@
 import sys
 import cv2
 import numpy
+import math
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.uic import loadUi
 
@@ -9,6 +10,14 @@ def main():
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
+
+def gaussian_funcion():
+    x, y = numpy.mgrid[-1:2, -1:2]
+    sigma = 1
+    result = numpy.exp(-(x**2+y**2)/(2*sigma**2))
+    # normalize
+    result = result / result.sum()
+    return result
 
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
@@ -26,6 +35,8 @@ class MainWindow(QMainWindow):
         # section 3
         self.pushButton_RST.clicked.connect(self.transforms)
         self.pushButton_PT.clicked.connect(self.perspective_transformation)
+        # section 4
+        self.pushButton_GA.clicked.connect(self.gaussian)
 
     def load_image(self):
         img = cv2.imread('./images/dog.bmp')
@@ -94,12 +105,51 @@ class MainWindow(QMainWindow):
         transform_array = cv2.getRotationMatrix2D((tx, ty), angle, scale)
         img_transform = cv2.warpAffine(img, transform_array, img.shape[:2])
 
-        cv2.imshow('origin', img)
-        cv2.imshow('transform', img_transform)
+        cv2.imshow('original', img)
+        cv2.imshow('transformed', img_transform)
 
     def perspective_transformation(self):
         img = cv2.imread('./images/OriginalPerspective.png')
         cv2.imshow('OP', img)
+        clicked_points = []
+        target_point = [(20, 20), (20, 450), (450, 450), (450, 20)]
+        
+        def mouse_click_left(event, x, y, flags, param):
+            if event == cv2.EVENT_LBUTTONDOWN and len(clicked_points) < 4:
+                clicked_points.append((x, y))
+            
+            if len(clicked_points) == 4:
+                transform_array = cv2.getPerspectiveTransform(numpy.float32(clicked_points), numpy.float32(target_point))
+                img_transform = cv2.warpPerspective(img, transform_array,(430,430))
+                cv2.imshow('Perspective Transformation', img_transform)
+                clicked_points.clear()
+                
+        cv2.setMouseCallback('OP', mouse_click_left)
+
+    def gaussian(self):
+        img = cv2.imread('./images/School.jpg')
+        cv2.imshow('original', img)
+        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        cv2.imshow('gray', img_gray)
+
+        img_gaussian = numpy.copy(img_gray)
+        gaussian_kernel = gaussian_funcion()
+        
+        # iterating img's x and y axis
+        for i in range(1,img_gray.shape[0]-1):
+            for j in range(1,img_gray.shape[1]-1):
+                temp = 0
+                # applying gaussian filter
+                for k in range(0,3):
+                    for m in range(0,3):
+                        temp  = temp + (gaussian_kernel[k][m] * img_gray[i+k-1][j+m-1])
+                img_gaussian[i][j] = temp
+
+        cv2.imshow('gaussian', img_gaussian)
+
+    def sobel_x(self):
+        img = cv2.imread('./images/School.jpg')
+        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 if __name__ == '__main__':
     main()
