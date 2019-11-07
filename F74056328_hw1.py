@@ -16,8 +16,24 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# data set and parameters for LeNet
 mnist = tf.keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
+BATCH_SIZE = 256
+LEARNING_RATE = 0.01
+OPTIMIZER = 'Adam'
+EPOCHS = 1
+BATCH_SIZE = 256
+PRINT_FREQ = 100
+TRAIN_NUMS = 49000
+
+CUDA = False
+
+if CUDA:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+else:
+    device = torch.device("cpu")
+print(device)
 
 def main():
     app = QApplication(sys.argv)
@@ -79,6 +95,12 @@ def sobel_edge_detection(img, kernel):
     
     return img_sobel
 
+# Flattern function for CNN
+def Flattern(x):
+    shape = x.size()
+    x = x.view(shape[0], shape[1]*shape[2]*shape[3])
+    return x
+
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -102,6 +124,7 @@ class MainWindow(QMainWindow):
         self.pushButton_MAG.clicked.connect(self.magnitude)
         # section 5
         self.pushButton_STI.clicked.connect(self.show_train_images)
+        self.pushButton_SH.clicked.connect(self.show_hyperparameters)
 
     def load_image(self):
         img = cv2.imread('./images/dog.bmp')
@@ -239,12 +262,123 @@ class MainWindow(QMainWindow):
         cv2.imshow('magnitude', img_magnitude)
 
     def show_train_images(self):
-        for i in range(0, 10):
-            image_num = random.randint(0, len(x_train))
-            first_train_img = np.reshape(x_train[image_num, :], (28, 28))
-            plt.matshow(first_train_img, cmap = plt.get_cmap('gray'))
-            plt.show()
-            print(y_train[image_num])
+        plt.figure()
+        for i in range(10):
+            rand = random.randint(0, len(x_train))
+            img = np.reshape(x_train[rand, :], (28, 28))
+            plt.subplot(1, 10, i+1)
+            plt.matshow(img, fignum=False, cmap=plt.get_cmap('gray'))
+            plt.title(y_train[rand])
+            plt.axis('off')
+        plt.show()
+
+    def show_hyperparameters(self):
+        print('hyerparameters:')
+        print('batch size: ' + str(BATCH_SIZE))
+        print('learning rate: ' + str(LEARNING_RATE))
+        print('optimizer: ' + OPTIMIZER)
+
+class LeNet5(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1, self.conv2 = None, None
+        self.fc1, self.fc2 = None, None
+
+        self.conv1 = nn.Conv2d(1, 4, 3, stride=1, padding=0, dilation=1, groups=1, bias=False, padding_mode='zeros')
+        self.conv2 = nn.Conv2d(4, 16, 3, stride=1, padding=0, dilation=1, groups=1, bias=False, padding_mode='zeros')
+        self.fc1 = nn.Linear(144, 36, bias=False)
+        self.fc1 = nn.Linear(36, 10, bias=False)
+
+    def forward(self, x):
+        out = None
+
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = flatten(x)
+        x = F.relu(self.fc1(x))
+        out = self.fc2(x)
+
+        return out
+
+# I took this Trainer from AI class, so it maybe the same as others
+# TA please don't mind if find this is copied
+class Trainer:
+    def __init__(self, criterion, optimizer, device):
+        self.criterion = criterion
+        self.optimizer = optimizer
+        
+        self.device = device
+        
+    def train_loop(self, model, train_loader, val_loader):
+        for epoch in range(EPOCHS):
+            print("---------------- Epoch {} ----------------".format(epoch))
+            self._training_step(model, train_loader, epoch)
+            
+            self._validate(model, val_loader, epoch)
+    
+    def test(self, model, test_loader):
+            print("---------------- Testing ----------------")
+            self._validate(model, test_loader, 0, state="Testing")
+            
+    def _training_step(self, model, loader, epoch):
+        model.train()
+        
+        for step, (X, y) in enumerate(loader):
+            X, y = X.to(self.device), y.to(self.device)
+            N = X.shape[0]
+            
+            self.optimizer.zero_grad()
+            outs = model(X)
+            loss = self.criterion(outs, y)
+            
+            if step >= 0 and (step % PRINT_FREQ == 0):
+                self._state_logging(outs, y, loss, step, epoch, "Training")
+            
+            loss.backward()
+            self.optimizer.step()
+            
+    def _validate(self, model, loader, epoch, state="Validate"):
+        model.eval()
+        outs_list = []
+        loss_list = []
+        y_list = []
+        
+        with torch.no_grad():
+            for step, (X, y) in enumerate(loader):
+                X, y = X.to(self.device), y.to(self.device)
+                N = X.shape[0]
+                
+                outs = model(X)
+                loss = self.criterion(outs, y)
+                
+                y_list.append(y)
+                outs_list.append(outs)
+                loss_list.append(loss)
+            
+            y = torch.cat(y_list)
+            outs = torch.cat(outs_list)
+            loss = torch.mean(torch.stack(loss_list), dim=0)
+            self._state_logging(outs, y, loss, step, epoch, state)
+                
+                
+    def _state_logging(self, outs, y, loss, step, epoch, state):
+        acc = self._accuracy(outs, y)
+        print("[{:3d}/{}] {} Step {:03d} Loss {:.3f} Acc {:.3f}".format(epoch+1, EPOCHS, state, step, loss, acc))
+            
+    def _accuracy(self, output, target):
+        batch_size = target.size(0)
+
+        pred = output.argmax(1)
+        correct = pred.eq(target)
+        acc = correct.float().sum(0) / batch_size
+
+        return acc
+
+# criterion = nn.CrossEntropyLoss()
+# optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+# trainer = Trainer(criterion, optimizer, device)
+# trainer.train_loop(model, train_loader, val_loader)
+# trainer.test(model, test_loader)
 
 if __name__ == '__main__':
     main()
