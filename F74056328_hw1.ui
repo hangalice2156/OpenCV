@@ -480,7 +480,7 @@
      <string>Test Image Index:</string>
     </property>
    </widget>
-   <widget class="QLineEdit" name="tx_edit_2">
+   <widget class="QLineEdit" name="tx_edit_index">
     <property name="geometry">
      <rect>
       <x>60</x>
@@ -490,7 +490,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>(0~9999)</string>
+     <string>0</string>
     </property>
    </widget>
   </widget>

@@ -21,9 +21,6 @@ from torch.utils.data import TensorDataset, DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 
 # dataset and parameters for LeNet
-mnist = tf.keras.datasets.mnist
-(x_train, y_train), (x_test, y_test) = mnist.load_data()
-
 BATCH_SIZE = 256
 LEARNING_RATE = 0.01
 OPTIMIZER = 'Adam'
@@ -31,7 +28,7 @@ EPOCHS = 1
 PRINT_FREQ = 100
 TRAIN_NUMS = 49000
 
-CUDA = False
+CUDA = True
 
 if CUDA:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -39,16 +36,21 @@ else:
     device = torch.device("cpu")
 print(device)
 
+criterion = nn.CrossEntropyLoss()
+
 kwargs = {}
 
-train_x, train_y = torch.from_numpy(x_train.reshape(-1, 1, 28, 28)).float(), torch.from_numpy(y_train.astype('long'))
-test_x, test_y = [
+mnist = tf.keras.datasets.mnist
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+x_t, y_t = torch.from_numpy(x_train.reshape(-1, 1, 28, 28)).float(), torch.from_numpy(y_train.astype('long'))
+x_tt, y_tt = [
    torch.from_numpy(x_test.reshape(-1, 1, 28, 28)).float(),
    torch.from_numpy(y_test.astype('long'))
    ]
 
-train_dataset = TensorDataset(train_x, train_y)
-test_dataset = TensorDataset(test_x, test_y)
+train_dataset = TensorDataset(x_t, y_t)
+test_dataset = TensorDataset(x_tt, y_tt)
 
 train_loader = DataLoader(dataset=train_dataset, shuffle=True, batch_size=BATCH_SIZE, **kwargs)
 test_loader = DataLoader(dataset=test_dataset, shuffle=True, batch_size=BATCH_SIZE, **kwargs)
@@ -56,6 +58,7 @@ test_loader = DataLoader(dataset=test_dataset, shuffle=True, batch_size=BATCH_SI
 loss_training = []
 loss_validate = []
 accuracy_validate = []
+test_validate = None
 
 def main():
     app = QApplication(sys.argv)
@@ -149,6 +152,7 @@ class MainWindow(QMainWindow):
         self.pushButton_SH.clicked.connect(self.show_hyperparameters)
         self.pushButton_T1E.clicked.connect(self.train_one_epoch)
         self.pushButton_STR.clicked.connect(self.show_training_results)
+        self.pushButton_INFER.clicked.connect(self.inference)
 
     def load_image(self):
         img = cv2.imread('./images/dog.bmp')
@@ -347,8 +351,36 @@ class MainWindow(QMainWindow):
             loss_training.clear()
             loss_validate.clear()
             accuracy_validate.clear()
+
+            torch.save(model, './F74056166_model.pth')
         else:
             cv2.imshow('training result', img)
+        
+    def inference(self):
+        index = int(self.tx_edit_index.text())
+        custom_x_test, custom_y_test = np.array([x_test[index]]), np.array([y_test[index]])
+        custom_x_test, custom_y_test = [
+           torch.from_numpy(custom_x_test.reshape(-1, 1, 28, 28)).float(),
+           torch.from_numpy(custom_y_test.astype('long'))
+           ]
+        custom_dataset = TensorDataset(custom_x_test, custom_y_test)
+        custom_loader = DataLoader(dataset=custom_dataset, shuffle=True, batch_size=BATCH_SIZE, **kwargs)
+        
+        model = torch.load('./F74056328_CNN_model.pth')
+        model.eval()
+
+        trainer.test(model, custom_loader)
+        
+        img = np.reshape(x_test[index, :], (28, 28))
+        plt.matshow(img, cmap=plt.get_cmap('gray'))
+        plt.title(y_test[index])
+        plt.axis('off')
+        plt.show()
+        global test_validate
+        plt.hist(test_validate, bins=np.linspace(0, 10))
+        plt.show()
+
+        test_validate = None
 
 
 class CNN(nn.Module):
@@ -374,9 +406,15 @@ class CNN(nn.Module):
         return out
     
 model = CNN()
+if OPTIMIZER == 'Adam':
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+elif OPTIMIZER == 'SGD':
+    optimizer = torch.optim.SGD(params=model.parameters(),lr=1e-3, momentum=0.9)
+else:
+    print('Warning: OPTIMIZER is not defined.')
 
 # I took this Trainer from another AI class. Provided by their TAs
-# Only modified some parts, so it maybe the same as others
+# Only modified some parts, so it maybe likely others'
 # TA please don't mind
 class Trainer:
     def __init__(self, criterion, optimizer, device):
@@ -426,6 +464,8 @@ class Trainer:
                 
                 outs = model(X)
                 y = y.long()
+                global test_validate
+                test_validate = y
                 loss = self.criterion(outs, y)
                 
                 y_list.append(y)
@@ -452,14 +492,6 @@ class Trainer:
         acc = correct.float().sum(0) / batch_size
 
         return acc
-
-criterion = nn.CrossEntropyLoss()
-if OPTIMIZER == 'Adam':
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
-elif OPTIMIZER == 'SGD':
-    optimizer = torch.optim.SGD(params=model.parameters(),lr=1e-3, momentum=0.9)
-else:
-    print('Warning: OPTIMIZER is not defined.')
 
 trainer = Trainer(criterion, optimizer, device)
 
