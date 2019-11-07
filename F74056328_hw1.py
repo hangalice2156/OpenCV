@@ -16,14 +16,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# data set and parameters for LeNet
+import torch.optim as optim
+from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data.sampler import SubsetRandomSampler
+
+# dataset and parameters for LeNet
 mnist = tf.keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
+
 BATCH_SIZE = 256
 LEARNING_RATE = 0.01
 OPTIMIZER = 'Adam'
 EPOCHS = 1
-BATCH_SIZE = 256
 PRINT_FREQ = 100
 TRAIN_NUMS = 49000
 
@@ -35,6 +39,24 @@ else:
     device = torch.device("cpu")
 print(device)
 
+kwargs = {}
+
+train_x, train_y = torch.from_numpy(x_train.reshape(-1, 1, 28, 28)).float(), torch.from_numpy(y_train.astype('long'))
+test_x, test_y = [
+   torch.from_numpy(x_test.reshape(-1, 1, 28, 28)).float(),
+   torch.from_numpy(y_test.astype('long'))
+   ]
+
+train_dataset = TensorDataset(train_x, train_y)
+test_dataset = TensorDataset(test_x, test_y)
+
+train_loader = DataLoader(dataset=train_dataset, shuffle=True, batch_size=BATCH_SIZE, **kwargs)
+test_loader = DataLoader(dataset=test_dataset, shuffle=True, batch_size=BATCH_SIZE, **kwargs)
+
+loss_training = []
+loss_validate = []
+accuracy_validate = []
+
 def main():
     app = QApplication(sys.argv)
     window = MainWindow()
@@ -43,7 +65,7 @@ def main():
 
 def gaussian_filter(img):
     x, y = np.mgrid[-1:2, -1:2]
-    sigma = 1
+    sigma = 3
     gaussian_kernel = np.exp(-(x**2+y**2)/(2*sigma**2))
     # normalize
     gaussian_kernel = gaussian_kernel / gaussian_kernel.sum()
@@ -60,6 +82,12 @@ def gaussian_filter(img):
             img_filtered[i][j] = temp
 
     return img_filtered
+
+# Flatten function for CNN
+def flatten(x):
+    shape = x.size()
+    x = x.view(shape[0], shape[1]*shape[2]*shape[3])
+    return x
 
 def sobel_edge_detection(img, kernel):
     img_sobel = np.copy(img)
@@ -95,12 +123,6 @@ def sobel_edge_detection(img, kernel):
     
     return img_sobel
 
-# Flattern function for CNN
-def Flattern(x):
-    shape = x.size()
-    x = x.view(shape[0], shape[1]*shape[2]*shape[3])
-    return x
-
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -125,6 +147,8 @@ class MainWindow(QMainWindow):
         # section 5
         self.pushButton_STI.clicked.connect(self.show_train_images)
         self.pushButton_SH.clicked.connect(self.show_hyperparameters)
+        self.pushButton_T1E.clicked.connect(self.train_one_epoch)
+        self.pushButton_STR.clicked.connect(self.show_training_results)
 
     def load_image(self):
         img = cv2.imread('./images/dog.bmp')
@@ -278,43 +302,92 @@ class MainWindow(QMainWindow):
         print('learning rate: ' + str(LEARNING_RATE))
         print('optimizer: ' + OPTIMIZER)
 
-class LeNet5(nn.Module):
+    def train_one_epoch(self):
+        global EPOCHS
+        EPOCHS = 1
+        trainer.train_loop(model, train_loader)
+        trainer.test(model, test_loader)
+
+        y_axis = np.arange(0, len(loss_training), 1)
+        plt.plot(y_axis, loss_training[:])
+        plt.xlabel('iteration')
+        plt.ylabel('loss')
+        plt.title('Train one EPOCH')
+        plt.show()
+        loss_training.clear()
+        loss_validate.clear()
+        accuracy_validate.clear()
+
+    def show_training_results(self):
+        img = cv2.imread('./Training_result.png')
+        # if image not exist, train a new one then save show it
+        if img is None:
+            global EPOCHS
+            EPOCHS = 50
+            trainer.train_loop(model, train_loader)
+            trainer.test(model, test_loader)
+
+            plt.figure()
+
+            plt.subplot(2, 1, 1)
+            y_axis = np.arange(0, len(loss_validate), 1)
+            plt.plot(y_axis, loss_validate[:])
+            plt.xlabel('iteration')
+            plt.ylabel('loss')
+            plt.title('Train ' + str(EPOCHS) + ' EPOCH')
+
+            plt.subplot(2, 1, 2)
+            y_axis = np.arange(0, len(accuracy_validate), 1)
+            plt.plot(y_axis, accuracy_validate[:])
+            plt.xlabel('iteration')
+            plt.ylabel('accuracy')
+
+            plt.savefig('Training_result.png')
+            plt.show()
+            loss_training.clear()
+            loss_validate.clear()
+            accuracy_validate.clear()
+        else:
+            cv2.imshow('training result', img)
+
+
+class CNN(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv1, self.conv2 = None, None
         self.fc1, self.fc2 = None, None
 
-        self.conv1 = nn.Conv2d(1, 4, 3, stride=1, padding=0, dilation=1, groups=1, bias=False, padding_mode='zeros')
-        self.conv2 = nn.Conv2d(4, 16, 3, stride=1, padding=0, dilation=1, groups=1, bias=False, padding_mode='zeros')
-        self.fc1 = nn.Linear(144, 36, bias=False)
-        self.fc1 = nn.Linear(36, 10, bias=False)
+        self.conv1 = nn.Conv2d(1, 4, 5, stride=1, padding=0, dilation=1, groups=1, bias=False, padding_mode='zeros')
+        self.conv2 = nn.Conv2d(4, 8, 5, stride=1, padding=0, dilation=1, groups=1, bias=False, padding_mode='zeros')
+        self.fc1 = nn.Linear(800, 96, bias=False)
+        self.fc2 = nn.Linear(96, 10, bias=False)
 
     def forward(self, x):
         out = None
 
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
+        x = self.conv1(x)
+        x = F.max_pool2d(self.conv2(x), (2, 2))
         x = flatten(x)
         x = F.relu(self.fc1(x))
         out = self.fc2(x)
 
         return out
+    
+model = CNN()
 
-# I took this Trainer from AI class, so it maybe the same as others
-# TA please don't mind if find this is copied
+# I took this Trainer from another AI class. Provided by their TAs
+# Only modified some parts, so it maybe the same as others
+# TA please don't mind
 class Trainer:
     def __init__(self, criterion, optimizer, device):
         self.criterion = criterion
         self.optimizer = optimizer
-        
         self.device = device
         
-    def train_loop(self, model, train_loader, val_loader):
+    def train_loop(self, model, train_loader):
         for epoch in range(EPOCHS):
             print("---------------- Epoch {} ----------------".format(epoch))
             self._training_step(model, train_loader, epoch)
-            
-            self._validate(model, val_loader, epoch)
     
     def test(self, model, test_loader):
             print("---------------- Testing ----------------")
@@ -325,11 +398,15 @@ class Trainer:
         
         for step, (X, y) in enumerate(loader):
             X, y = X.to(self.device), y.to(self.device)
-            N = X.shape[0]
             
             self.optimizer.zero_grad()
             outs = model(X)
+            y = y.long()
             loss = self.criterion(outs, y)
+
+            # special case for section 5.3 in order to record the loss
+            if EPOCHS == 1:
+                loss_training.append(loss)
             
             if step >= 0 and (step % PRINT_FREQ == 0):
                 self._state_logging(outs, y, loss, step, epoch, "Training")
@@ -346,9 +423,9 @@ class Trainer:
         with torch.no_grad():
             for step, (X, y) in enumerate(loader):
                 X, y = X.to(self.device), y.to(self.device)
-                N = X.shape[0]
                 
                 outs = model(X)
+                y = y.long()
                 loss = self.criterion(outs, y)
                 
                 y_list.append(y)
@@ -363,6 +440,8 @@ class Trainer:
                 
     def _state_logging(self, outs, y, loss, step, epoch, state):
         acc = self._accuracy(outs, y)
+        loss_validate.append(loss)
+        accuracy_validate.append(acc)
         print("[{:3d}/{}] {} Step {:03d} Loss {:.3f} Acc {:.3f}".format(epoch+1, EPOCHS, state, step, loss, acc))
             
     def _accuracy(self, output, target):
@@ -374,11 +453,15 @@ class Trainer:
 
         return acc
 
-# criterion = nn.CrossEntropyLoss()
-# optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
-# trainer = Trainer(criterion, optimizer, device)
-# trainer.train_loop(model, train_loader, val_loader)
-# trainer.test(model, test_loader)
+criterion = nn.CrossEntropyLoss()
+if OPTIMIZER == 'Adam':
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-3, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+elif OPTIMIZER == 'SGD':
+    optimizer = torch.optim.SGD(params=model.parameters(),lr=1e-3, momentum=0.9)
+else:
+    print('Warning: OPTIMIZER is not defined.')
+
+trainer = Trainer(criterion, optimizer, device)
 
 if __name__ == '__main__':
     main()
